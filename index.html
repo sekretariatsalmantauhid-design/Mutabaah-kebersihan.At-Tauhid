@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mutaba'ah Kebersihan Pro</title>
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#047857">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-512.png">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; }
+        ::-webkit-scrollbar { height: 8px; width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #10b981; border-radius: 4px; border: 2px solid #f1f5f9; }
+        ::-webkit-scrollbar-thumb:hover { background: #059669; }
+        .sticky-col { position: sticky; left: 0; z-index: 20; box-shadow: 3px 0 10px -3px rgba(0,0,0,0.05); }
+        .hukuman-row { transition: all 0.3s ease; }
+        .hukuman-done { opacity: 0.4; background-color: #f8fafc; text-decoration: line-through; filter: grayscale(100%); }
+        select:focus, input:focus, textarea:focus { outline: none; ring: 2px solid #10b981; }
+
+        @media print {
+            @page { size: landscape; margin: 10mm; }
+            body { background-color: white !important; -webkit-print-color-adjust: exact !important; font-size: 10px; }
+            .print\:hidden { display: none !important; }
+            .bg-white { box-shadow: none !important; border: none !important; padding: 0 !important; margin-bottom: 20px !important; }
+            .sticky-col { position: static !important; box-shadow: none !important; border-right: 1px solid #e2e8f0; }
+            table { width: 100% !important; border-collapse: collapse; }
+            th, td { border: 1px solid #cbd5e1 !important; padding: 4px !important; }
+        }
+    </style>
+</head>
+<body class="text-gray-800 antialiased selection:bg-emerald-200">
+
+    <div id="toast" class="fixed bottom-5 right-5 transform translate-y-20 opacity-0 transition-all duration-300 z-[200] bg-gray-900 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 pointer-events-none">
+        <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>
+        <span id="toast-msg" class="font-medium text-sm">Pesan</span>
+    </div>
+
+    <div id="login-overlay" class="fixed inset-0 z-[100] bg-gradient-to-br from-emerald-800 to-teal-900 flex items-center justify-center p-6 transition-all duration-700">
+        <div class="bg-white/95 backdrop-blur-sm p-10 rounded-[2rem] shadow-2xl w-full max-w-sm text-center transform transition-transform scale-100">
+            <div class="w-24 h-24 bg-gradient-to-tr from-emerald-100 to-teal-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner border border-emerald-100">
+                <i class="fa-solid fa-broom text-4xl"></i>
+            </div>
+            <h2 class="text-2xl font-extrabold text-gray-800 mb-1">Inspeksi Kebersihan</h2>
+            <p class="text-sm text-gray-500 mb-8 font-medium">Masukkan PIN Petugas</p>
+            
+            <input type="password" id="pin-input" inputmode="numeric" placeholder="••••" maxlength="4" class="w-full p-4 bg-gray-50 border-2 border-gray-200 rounded-2xl mb-6 text-center text-3xl tracking-[1em] focus:border-emerald-500 focus:bg-white transition-all shadow-inner font-bold text-emerald-800">
+            
+            <button onclick="window.checkLogin()" class="w-full bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 text-white font-bold py-4 rounded-2xl transition-all shadow-[0_8px_20px_-6px_rgba(16,185,129,0.5)] active:scale-95 text-lg">
+                Buka Aplikasi
+            </button>
+            <p id="login-error" class="text-red-500 text-xs mt-4 hidden font-bold uppercase tracking-widest bg-red-50 py-2 rounded-lg">PIN Salah, Bos!</p>
+        </div>
+    </div>
+
+    <div id="main-app" class="hidden">
+        
+        <nav class="bg-gradient-to-r from-emerald-700 to-teal-600 text-white shadow-lg sticky top-0 z-50 print:hidden">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <div class="bg-white/20 p-2 rounded-lg backdrop-blur-md">
+                        <i class="fa-solid fa-sparkles text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-extrabold text-lg tracking-tight leading-tight">Mutaba'ah Kebersihan</h1>
+                        <p class="text-[10px] uppercase tracking-wider opacity-80 font-medium">Kedisiplinan & Kerapihan | <span class="text-yellow-300"><i class="fa-solid fa-cloud"></i> Cloud Sync</span></p>
+                    </div>
+                </div>
+                <button onclick="window.logout()" class="text-xs bg-white/10 hover:bg-white/20 backdrop-blur-md px-4 py-2 rounded-xl border border-white/20 transition-all font-semibold flex items-center gap-2">
+                    <i class="fa-solid fa-power-off"></i> <span class="hidden sm:inline">Keluar</span>
+                </button>
+            </div>
+        </nav>
+
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+            
+            <div class="flex space-x-2 bg-white p-1.5 rounded-2xl shadow-sm border border-gray-100 mb-8 overflow-x-auto print:hidden">
+                <button onclick="window.switchTab('input')" id="tab-input" class="flex-1 min-w-[130px] px-4 py-2.5 rounded-xl bg-emerald-50 text-emerald-700 font-bold transition-all flex items-center justify-center gap-2 text-sm shadow-sm border border-emerald-100">
+                    <i class="fa-solid fa-clipboard-check"></i> Ceklis Piket
+                </button>
+                <button onclick="window.switchTab('peduli')" id="tab-peduli" class="flex-1 min-w-[130px] px-4 py-2.5 rounded-xl text-gray-500 hover:bg-gray-50 font-semibold transition-all flex items-center justify-center gap-2 text-sm border border-transparent">
+                    <i class="fa-solid fa-hands-holding-circle"></i> Peduli Lingkungan
+                </button>
+                <button onclick="window.switchTab('report')" id="tab-report" class="flex-1 min-w-[130px] px-4 py-2.5 rounded-xl text-gray-500 hover:bg-gray-50 font-semibold transition-all flex items-center justify-center gap-2 text-sm border border-transparent">
+                    <i class="fa-solid fa-chart-line"></i> Laporan
+                </button>
+                <button onclick="window.switchTab('punishment')" id="tab-punishment" class="flex-1 min-w-[130px] px-4 py-2.5 rounded-xl text-gray-500 hover:bg-gray-50 font-semibold transition-all flex items-center justify-center gap-2 text-sm border border-transparent">
+                    <i class="fa-solid fa-triangle-exclamation"></i> Tindak Lanjut
+                </button>
+                <button onclick="window.switchTab('students')" id="tab-students" class="flex-1 min-w-[130px] px-4 py-2.5 rounded-xl text-gray-500 hover:bg-gray-50 font-semibold transition-all flex items-center justify-center gap-2 text-sm border border-transparent">
+                    <i class="fa-solid fa-users-viewfinder"></i> Data Entitas
+                </button>
+            </div>
+
+            <section id="section-input" class="block animate-fade-in print:hidden">
+                <div class="bg-white p-6 rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] border border-gray-100 mb-6 flex flex-col md:flex-row gap-4 justify-between items-center">
+                    <div class="flex items-center gap-4">
+                        <div class="bg-emerald-100 text-emerald-600 p-3 rounded-xl"><i class="fa-solid fa-spray-can-sparkles text-xl"></i></div>
+                        <div>
+                            <h2 class="text-xl font-extrabold text-gray-800">Inspeksi Kebersihan</h2>
+                            <p class="text-sm text-gray-500 font-medium">Ceklis area piket hari ini.</p>
+                        </div>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                        <select id="kategori-input" class="bg-emerald-50 border-2 border-emerald-200 text-emerald-800 rounded-xl p-3 shadow-inner font-bold text-sm focus:ring-0 focus:border-emerald-500 cursor-pointer outline-none" onchange="window.renderInputTable()">
+                            <option value="harian">Piket Masjid/Umum</option>
+                            <option value="kelas">Piket Kelas</option>
+                            <option value="kamar">Piket Kamar</option>
+                        </select>
+                        <input type="date" id="input-date" class="bg-gray-50 border border-gray-200 text-gray-900 rounded-xl p-3 shadow-inner font-bold text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 cursor-pointer outline-none" onchange="window.renderInputTable()">
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] overflow-hidden border border-gray-100" id="table-container">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left text-gray-600">
+                            <thead id="input-thead" class="bg-gray-50 text-[11px] uppercase text-gray-500 font-extrabold tracking-wider border-b border-gray-200">
+                                </thead>
+                            <tbody id="input-tbody">
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="mt-6 flex flex-col sm:flex-row justify-end gap-3" id="action-buttons">
+                    <button onclick="window.saveDailyData()" class="bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 text-white font-bold py-3 px-8 rounded-xl shadow-[0_8px_15px_-3px_rgba(16,185,129,0.4)] transition-all flex items-center justify-center gap-2 active:scale-95">
+                        <i class="fa-solid fa-cloud-arrow-up"></i> Simpan ke Cloud
+                    </button>
+                </div>
+            </section>
+
+            <section id="section-peduli" class="hidden animate-fade-in print:hidden">
+                <div class="bg-white p-6 rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] border border-gray-100 mb-6 flex flex-col md:flex-row gap-4 justify-between items-center">
+                    <div class="flex items-center gap-4">
+                        <div class="bg-teal-100 text-teal-600 p-3 rounded-xl"><i class="fa-solid fa-box-open text-xl"></i></div>
+                        <div>
+                            <h2 class="text-xl font-extrabold text-gray-800">Catatan Individu</h2>
+                            <p class="text-sm text-gray-500 font-medium">Log pelanggaran buang sampah/naruh barang sembarangan.</p>
+                        </div>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                        <input type="date" id="peduli-date" class="bg-gray-50 border border-gray-200 text-gray-900 rounded-xl p-3 shadow-inner font-bold text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 cursor-pointer outline-none" onchange="window.renderPeduliTable()">
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] overflow-hidden border border-gray-100">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left text-gray-600">
+                            <thead class="bg-gray-50 text-[11px] uppercase text-gray-500 font-extrabold tracking-wider border-b border-gray-200">
+                                <tr>
+                                    <th class="px-4 py-4 sticky-col bg-gray-50 min-w-[120px] max-w-[140px] md:max-w-[220px] whitespace-normal break-words leading-snug">Nama Santri (Individu)</th>
+                                    <th class="px-4 py-4 border-l border-gray-200 min-w-[300px]">Daftar Lokasi & Catatan Temuan</th>
+                                </tr>
+                            </thead>
+                            <tbody id="peduli-tbody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="mt-6 flex flex-col sm:flex-row justify-end gap-3">
+                    <button onclick="window.savePeduliData()" class="bg-gradient-to-r from-teal-600 to-emerald-500 hover:from-teal-700 hover:to-emerald-600 text-white font-bold py-3 px-8 rounded-xl shadow-[0_8px_15px_-3px_rgba(20,184,166,0.4)] transition-all flex items-center justify-center gap-2 active:scale-95">
+                        <i class="fa-solid fa-cloud-arrow-up"></i> Simpan Catatan
+                    </button>
+                </div>
+            </section>
+
+            <section id="section-report" class="hidden animate-fade-in">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-6 flex flex-col md:flex-row gap-4 justify-between items-center print:hidden">
+                    <div class="flex items-center gap-4">
+                        <div class="bg-blue-100 text-blue-600 p-3 rounded-xl"><i class="fa-solid fa-chart-pie text-xl"></i></div>
+                        <div>
+                            <h2 class="text-xl font-extrabold text-gray-800">Laporan Kedisiplinan</h2>
+                            <p class="text-sm text-gray-500 font-medium">Rekap harian kebersihan per entitas.</p>
+                        </div>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                        <select id="kategori-report" class="bg-blue-50 border-2 border-blue-200 text-blue-800 rounded-xl p-3 shadow-inner font-bold text-sm outline-none cursor-pointer" onchange="window.renderReportTable()">
+                            <option value="harian">Piket Masjid/Umum</option>
+                            <option value="kelas">Piket Kelas</option>
+                            <option value="kamar">Piket Kamar</option>
+                            <option value="peduli">Peduli Lingkungan (Individu)</option>
+                        </select>
+                        <input type="date" id="report-date" class="bg-gray-50 border border-gray-200 rounded-xl p-3 shadow-inner font-bold text-sm outline-none cursor-pointer" onchange="window.renderReportTable()">
+                        <button onclick="window.print()" class="bg-gray-800 hover:bg-gray-900 text-white py-3 px-6 rounded-xl shadow-md text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-95">
+                            <i class="fa-solid fa-print"></i> Cetak
+                        </button>
+                    </div>
+                </div>
+                <div id="report-container"></div>
+            </section>
+
+            <section id="section-punishment" class="hidden animate-fade-in">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-6 flex flex-col md:flex-row gap-4 justify-between items-center print:hidden">
+                    <div class="flex items-center gap-4">
+                        <div class="bg-red-100 text-red-600 p-3 rounded-xl"><i class="fa-solid fa-triangle-exclamation text-xl"></i></div>
+                        <div>
+                            <h2 class="text-xl font-extrabold text-red-700">Tindak Lanjut Area Kotor</h2>
+                            <p class="text-sm text-gray-500 font-medium">Catatan bulanan area yang kotor atau tidak dikerjakan.</p>
+                        </div>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                        <input type="month" id="punishment-month" class="bg-gray-50 border border-gray-200 rounded-xl p-3 shadow-inner font-bold text-sm outline-none cursor-pointer" onchange="window.renderPunishmentTable()">
+                        <button onclick="window.print()" class="bg-red-600 hover:bg-red-700 text-white py-3 px-6 rounded-xl shadow-md text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-95">
+                            <i class="fa-solid fa-file-pdf"></i> Export
+                        </button>
+                    </div>
+                </div>
+                <div id="punishment-container"></div>
+            </section>
+
+            <section id="section-students" class="hidden animate-fade-in print:hidden">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-6 flex items-center gap-4">
+                    <div class="bg-gray-100 text-gray-600 p-3 rounded-xl"><i class="fa-solid fa-users-viewfinder text-xl"></i></div>
+                    <div>
+                        <h2 class="text-xl font-extrabold text-gray-800">Master Data Entitas</h2>
+                        <p class="text-sm text-gray-500 font-medium">Masukkan nama dengan kata kunci "Kelompok", "Kelas", atau "Kamar" agar otomatis tersortir.</p>
+                    </div>
+                </div>
+
+                <div class="bg-gradient-to-r from-emerald-50 to-teal-50 p-6 rounded-2xl shadow-inner border border-emerald-100 mb-6">
+                    <h3 class="text-sm font-bold text-emerald-800 mb-3">Tambah Entitas Baru</h3>
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <input type="text" id="new-student-name" placeholder="Contoh: Kelompok 1 : Ahmad / Kelas 7A : Ali / Kamar Abu Bakar..." class="bg-white border-2 border-emerald-100 text-gray-900 rounded-xl focus:ring-0 focus:border-emerald-500 block w-full p-3 font-medium outline-none transition-colors shadow-sm">
+                        <button onclick="window.addStudent()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-8 rounded-xl shadow-md transition-colors whitespace-nowrap active:scale-95">
+                            <i class="fa-solid fa-plus mr-1"></i> Tambahkan
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <table class="w-full text-sm text-left text-gray-600">
+                        <thead class="text-[11px] uppercase bg-gray-50 text-gray-500 font-extrabold border-b border-gray-200 tracking-wider">
+                            <tr>
+                                <th class="px-6 py-4 w-16 text-center">No</th>
+                                <th class="px-6 py-4 w-full">Nama Entitas (Kamar / Kelas / Kelompok / Individu)</th>
+                                <th class="px-6 py-4 text-center min-w-[120px]">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="students-tbody"></tbody>
+                    </table>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+        import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
+
+        // FIREBASE CONFIG
+        const firebaseConfig = {
+            apiKey: "AIzaSyBPiraA4o8PSsauc3kstexaAnRn8FEkqAo",
+            authDomain: "mutabaah-kebersihansantri.firebaseapp.com",
+            databaseURL: "https://mutabaah-kebersihansantri-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "mutabaah-kebersihansantri",
+            storageBucket: "mutabaah-kebersihansantri.firebasestorage.app",
+            messagingSenderId: "785153005395",
+            appId: "1:785153005395:web:1c15130219cfebbddcf3a6"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+
+        // KATEGORI PIKET & STRUKTUR KOLOM
+        window.kategoriPiket = {
+            harian: ['Kamar Mandi 1', 'Kamar Mandi 2', 'Karpet Masjid', 'Meja Masjid', 'Mushaf Masjid', 'Kamar Mandi Masjid', 'Halaman Masjid', 'Jemuran Lantai 3'],
+            kelas: ['Menyapu / Ngepel', 'Buang Sampah', 'Merapikan Kitab', 'Merapikan Kursi'],
+            kamar: ['Kerapihan Kasur', 'Nyapu / Ngepel', 'Buang Sampah']
+        };
+
+        window.students = [];
+        window.db = {};
+        window.dbPunishment = {};
+        window.currentTab = 'input';
+
+        // --- FILTER ENTITAS CERDAS ---
+        window.getFilteredStudents = function(cat) {
+            return window.students.filter(s => {
+                const n = s.name.toLowerCase();
+                const isKamar = n.includes('kamar');
+                const isKelas = n.includes('kelas');
+                const isKelp = n.includes('kelompok');
+                
+                if (cat === 'peduli') { return !isKamar && !isKelas && !isKelp; }
+                if (cat === 'kamar') return isKamar;
+                if (cat === 'kelas') return isKelas;
+                if (cat === 'harian') return isKelp;
+                
+                return false;
+            });
+        }
+
+        // --- HIGHLIGHT TEXT RENDERER ---
+        window.renderHighlightedName = function(name) {
+            if(!name) return "";
+            const parts = name.split(':');
+            
+            if(parts.length > 1) {
+                const prefix = parts[0].trim();
+                const suffix = parts.slice(1).join(':').trim(); 
+                
+                let highlightClass = "text-gray-800 font-bold mr-1";
+                if(prefix.toLowerCase().includes("kelompok")) { highlightClass = "text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md font-extrabold mr-1"; } 
+                else if(prefix.toLowerCase().includes("kamar")) { highlightClass = "text-blue-700 bg-blue-100 px-2 py-0.5 rounded-md font-extrabold mr-1"; } 
+                else if(prefix.toLowerCase().includes("kelas")) { highlightClass = "text-purple-700 bg-purple-100 px-2 py-0.5 rounded-md font-extrabold mr-1"; }
+
+                return `<span class="${highlightClass}">${prefix}</span> <span class="text-gray-400 font-bold mx-1">:</span> <span class="text-gray-600 font-medium">${suffix}</span>`;
+            }
+            return `<span class="font-bold text-gray-800">${name}</span>`;
+        }
+
+        // --- UI UTILITIES ---
+        window.showToast = function(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toast-icon');
+            document.getElementById('toast-msg').innerText = message;
+            if (type === 'success') {
+                icon.className = 'fa-solid fa-cloud-arrow-up text-emerald-400 text-xl';
+                toast.className = 'fixed bottom-6 right-6 transform translate-y-0 opacity-100 transition-all duration-300 z-[200] bg-gray-900 text-white px-5 py-3.5 rounded-xl shadow-2xl flex items-center gap-3 border-l-4 border-emerald-500';
+            } else {
+                icon.className = 'fa-solid fa-circle-exclamation text-red-400 text-xl';
+                toast.className = 'fixed bottom-6 right-6 transform translate-y-0 opacity-100 transition-all duration-300 z-[200] bg-gray-900 text-white px-5 py-3.5 rounded-xl shadow-2xl flex items-center gap-3 border-l-4 border-red-500';
+            }
+            setTimeout(() => { toast.classList.remove('translate-y-0', 'opacity-100'); toast.classList.add('translate-y-20', 'opacity-0'); }, 3000);
+        }
+
+        const SECRET_PIN = '1234'; 
+        window.checkLogin = function() {
+            const inputField = document.getElementById('pin-input');
+            const errorMessage = document.getElementById('login-error');
+            const overlay = document.getElementById('login-overlay');
+            const app = document.getElementById('main-app');
+            
+            if(inputField.value === SECRET_PIN) {
+                overlay.style.opacity = '0';
+                setTimeout(() => { overlay.classList.add('hidden'); app.classList.remove('hidden'); }, 500);
+                sessionStorage.setItem('isLoggedIn', 'true');
+                
+                const today = new Date().toISOString().split('T')[0];
+                document.getElementById('input-date').value = today;
+                document.getElementById('peduli-date').value = today; 
+                document.getElementById('report-date').value = today; 
+                document.getElementById('punishment-month').value = today.substring(0,7);
+            } else {
+                errorMessage.classList.remove('hidden');
+                inputField.value = ''; inputField.focus();
+            }
+        }
+        
+        window.logout = function() {
+            if(confirm('Yakin ingin keluar dari sistem?')) { sessionStorage.removeItem('isLoggedIn'); location.reload(); }
+        }
+
+        window.switchTab = function(tab) {
+            window.currentTab = tab;
+            const sections = ['input', 'peduli', 'report', 'punishment', 'students'];
+            sections.forEach(s => {
+                document.getElementById(`section-${s}`).classList.toggle('hidden', s !== tab);
+                const btn = document.getElementById(`tab-${s}`);
+                if (s === tab) {
+                    if (tab === 'peduli') {
+                        btn.className = 'flex-1 min-w-[130px] px-4 py-2.5 rounded-xl bg-teal-50 text-teal-700 font-bold transition-all flex items-center justify-center gap-2 text-sm shadow-sm border border-teal-100';
+                    } else {
+                        btn.className = 'flex-1 min-w-[130px] px-4 py-2.5 rounded-xl bg-emerald-50 text-emerald-700 font-bold transition-all flex items-center justify-center gap-2 text-sm shadow-sm border border-emerald-100';
+                    }
+                } else {
+                    btn.className = 'flex-1 min-w-[130px] px-4 py-2.5 rounded-xl text-gray-500 hover:bg-gray-50 font-semibold transition-all flex items-center justify-center gap-2 text-sm border border-transparent';
+                }
+            });
+            if(tab === 'input') window.renderInputTable();
+            if(tab === 'peduli') window.renderPeduliTable();
+            if(tab === 'report') window.renderReportTable();
+            if(tab === 'punishment') window.renderPunishmentTable();
+            if(tab === 'students') window.renderStudentsList();
+        }
+
+        // --- FIREBASE LISTENERS ---
+        onValue(ref(database, 'entities'), (snapshot) => {
+            const data = snapshot.val() || [];
+            window.students = Array.isArray(data) ? data : Object.values(data);
+            if(window.currentTab === 'students') window.renderStudentsList();
+            if(window.currentTab === 'input') window.renderInputTable();
+            if(window.currentTab === 'peduli') window.renderPeduliTable();
+        });
+
+        onValue(ref(database, 'mutabaah_kebersihan'), (snapshot) => {
+            window.db = snapshot.val() || {};
+            if(window.currentTab === 'input') window.renderInputTable();
+            if(window.currentTab === 'peduli') window.renderPeduliTable();
+            if(window.currentTab === 'report') window.renderReportTable();
+            if(window.currentTab === 'punishment') window.renderPunishmentTable();
+        });
+
+        onValue(ref(database, 'punishment_kebersihan'), (snapshot) => {
+            window.dbPunishment = snapshot.val() || {};
+            if(window.currentTab === 'punishment') window.renderPunishmentTable();
+        });
+
+        // --- TAB: DATA ENTITAS ---
+        window.renderStudentsList = function() {
+            const tbody = document.getElementById('students-tbody');
+            if (window.students.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" class="text-center py-8 text-gray-500 italic">Belum ada data Entitas.</td></tr>`; return;
+            }
+            tbody.innerHTML = window.students.map((s, idx) => `
+                <tr class="border-b bg-white hover:bg-gray-50 transition-colors">
+                    <td class="px-6 py-4 font-mono text-gray-400 font-medium text-center">${idx + 1}</td>
+                    <td class="px-6 py-4">${window.renderHighlightedName(s.name)}</td>
+                    <td class="px-6 py-4 text-center flex justify-center gap-2">
+                        <button onclick="window.editStudent('${s.id}', '${s.name}')" class="text-blue-500 hover:bg-blue-50 w-10 h-10 rounded-xl transition-all">
+                            <i class="fa-solid fa-pen"></i>
+                        </button>
+                        <button onclick="window.deleteStudent('${s.id}')" class="text-red-500 hover:bg-red-50 w-10 h-10 rounded-xl transition-all">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        window.addStudent = function() {
+            const input = document.getElementById('new-student-name');
+            const name = input.value.trim();
+            if (!name) return;
+            const newArray = [...window.students, { id: 'E' + Date.now(), name: name }];
+            set(ref(database, 'entities'), newArray).then(() => { input.value = ''; window.showToast('Entitas ditambahkan!'); });
+        }
+
+        window.editStudent = function(id, currentName) {
+            const newName = prompt("Edit Nama Entitas:", currentName);
+            if(newName && newName.trim() !== "" && newName.trim() !== currentName) {
+                const updatedArray = window.students.map(s => s.id === id ? { ...s, name: newName.trim() } : s);
+                set(ref(database, 'entities'), updatedArray).then(() => window.showToast('Berhasil diperbarui!'));
+            }
+        }
+
+        window.deleteStudent = function(id) {
+            if(confirm('Yakin hapus data ini?')) {
+                const filteredArray = window.students.filter(s => s.id !== id);
+                set(ref(database, 'entities'), filteredArray).then(() => window.showToast('Berhasil dihapus.'));
+            }
+        }
+
+        // --- TAB: INPUT CEKLIS ---
+        window.createStatusSelect = function(id, val = '-') {
+            return `<select id="${id}" class="bg-gray-50 border border-gray-200 text-gray-900 font-bold text-xs rounded-xl focus:ring-2 focus:ring-emerald-500 block w-full p-2.5 outline-none cursor-pointer hover:bg-gray-100 transition-colors">
+                <option value="-" ${val === '-' ? 'selected' : ''}>- Strip -</option>
+                <option value="B" ${val === 'B' ? 'selected' : ''} class="text-emerald-600">✅ Bersih (B)</option>
+                <option value="K" ${val === 'K' ? 'selected' : ''} class="text-amber-600">⚠️ Kotor (K)</option>
+                <option value="T" ${val === 'T' ? 'selected' : ''} class="text-red-600">❌ Tidak Dikerjakan (T)</option>
+            </select>`;
+        }
+
+        window.renderInputTable = function() {
+            const date = document.getElementById('input-date').value;
+            const cat = document.getElementById('kategori-input').value;
+            const thead = document.getElementById('input-thead');
+            const tbody = document.getElementById('input-tbody');
+            
+            if(!date) return;
+            
+            const cols = window.kategoriPiket[cat];
+            
+            thead.innerHTML = `<tr>
+                <th class="px-4 py-4 sticky-col bg-gray-50 min-w-[120px] max-w-[140px] md:max-w-[220px] whitespace-normal break-words leading-snug">Nama Entitas</th>
+                ${cols.map(c => `<th class="px-3 py-4 text-center border-l border-gray-200 min-w-[120px] md:min-w-[140px]">${c}</th>`).join('')}
+            </tr>`;
+
+            const targetStudents = window.getFilteredStudents(cat);
+
+            if(targetStudents.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="${cols.length + 1}" class="text-center py-10 text-gray-500 italic font-medium">Tidak ada Entitas dengan kata kunci yang sesuai untuk kategori ini.</td></tr>`; return;
+            }
+
+            const dayData = (window.db[date] && window.db[date][cat]) ? window.db[date][cat] : {};
+
+            tbody.innerHTML = targetStudents.map((s, idx) => {
+                const bg = idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50';
+                const sData = dayData[s.id] || Array(cols.length).fill('-');
+                
+                let tdHtml = cols.map((c, i) => {
+                    const selId = `${s.id}_${i}`;
+                    return `<td class="px-2 py-2 border-l border-gray-100">${window.createStatusSelect(selId, sData[i])}</td>`;
+                }).join('');
+
+                return `<tr class="border-b ${bg} hover:bg-emerald-50 transition-colors">
+                    <td class="px-4 py-3 sticky-col ${bg} min-w-[120px] max-w-[140px] md:max-w-[220px] whitespace-normal break-words text-xs md:text-sm leading-relaxed">${window.renderHighlightedName(s.name)}</td>
+                    ${tdHtml}
+                </tr>`;
+            }).join('');
+        }
+
+        window.saveDailyData = function() {
+            const date = document.getElementById('input-date').value;
+            const cat = document.getElementById('kategori-input').value;
+            const cols = window.kategoriPiket[cat];
+            const targetStudents = window.getFilteredStudents(cat);
+
+            if (!date || targetStudents.length === 0) return;
+
+            let catData = (window.db[date] && window.db[date][cat]) ? {...window.db[date][cat]} : {};
+
+            targetStudents.forEach(s => {
+                let rowVals = [];
+                for(let i=0; i<cols.length; i++) {
+                    rowVals.push(document.getElementById(`${s.id}_${i}`).value);
+                }
+                catData[s.id] = rowVals;
+            });
+            
+            set(ref(database, `mutabaah_kebersihan/${date}/${cat}`), catData)
+                .then(() => window.showToast(`Data ${cat.toUpperCase()} tersimpan!`));
+        }
+
+        // --- TAB BARU: PEDULI LINGKUNGAN (MULTIPLE ROWS) ---
+        const lokasiGabungan = [...window.kategoriPiket.harian, ...window.kategoriPiket.kelas, 'Area Lainnya'];
+        
+        window.getLokasiOptions = function(selected = '-') {
+            let html = `<option value="-">- Aman (Tidak Ada Temuan) -</option>`;
+            lokasiGabungan.forEach(loc => { html += `<option value="${loc}" ${selected === loc ? 'selected' : ''}>${loc}</option>`; });
+            return html;
+        }
+
+        window.getPeduliRowHTML = function(loc = '-', note = '') {
+            return `<div class="flex flex-col sm:flex-row gap-2 items-start sm:items-center bg-teal-50/30 p-2 rounded-xl border border-teal-100 peduli-item w-full">
+                <select class="peduli-loc bg-white border border-gray-200 text-gray-900 font-semibold text-xs rounded-lg focus:ring-2 focus:ring-teal-500 block w-full sm:w-1/3 p-2.5 outline-none cursor-pointer shadow-sm">
+                    ${window.getLokasiOptions(loc)}
+                </select>
+                <input type="text" value="${note}" placeholder="Ketik pelanggaran (Misal: Sepatu berantakan)..." class="peduli-note bg-white border border-gray-200 text-gray-900 font-medium text-xs rounded-lg focus:ring-2 focus:ring-teal-500 block w-full flex-1 p-2.5 outline-none shadow-sm">
+                <button onclick="this.parentElement.remove()" class="text-red-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors" title="Hapus"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>`;
+        }
+
+        window.addPeduliRow = function(sid) {
+            const container = document.getElementById(`peduli_container_${sid}`);
+            container.insertAdjacentHTML('beforeend', window.getPeduliRowHTML());
+        }
+
+        window.renderPeduliTable = function() {
+            const date = document.getElementById('peduli-date').value;
+            const tbody = document.getElementById('peduli-tbody');
+            if(!date) return;
+            
+            const targetStudents = window.getFilteredStudents('peduli');
+            
+            if(targetStudents.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="2" class="text-center py-10 text-gray-500 italic font-medium">Belum ada data Individu. Masukkan nama tanpa kata 'Kamar', 'Kelas', atau 'Kelompok' di Master Data.</td></tr>`; 
+                return;
+            }
+
+            const dayData = (window.db[date] && window.db[date]['peduli']) ? window.db[date]['peduli'] : {};
+
+            tbody.innerHTML = targetStudents.map((s, idx) => {
+                const bg = idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50';
+                
+                // Ambil data saved, paksa jadi Array supaya bisa menampung banyak pelanggaran
+                let savedData = dayData[s.id];
+                if (!savedData) savedData = [];
+                if (!Array.isArray(savedData)) savedData = [savedData]; // Backward compability kalau data lama berupa object tunggal
+                if (savedData.length === 0) savedData = [{loc: '-', note: ''}]; // Default 1 baris kosong
+                
+                let itemsHtml = savedData.map(d => window.getPeduliRowHTML(d.loc, d.note)).join('');
+
+                return `<tr class="border-b ${bg} hover:bg-teal-50 transition-colors">
+                    <td class="px-4 py-4 font-bold text-gray-800 sticky-col ${bg} min-w-[120px] max-w-[140px] md:max-w-[220px] whitespace-normal break-words text-xs md:text-sm leading-relaxed align-top">${s.name}</td>
+                    <td class="px-3 py-3 border-l border-gray-100 align-top">
+                        <div id="peduli_container_${s.id}" class="space-y-2 mb-2 w-full">
+                            ${itemsHtml}
+                        </div>
+                        <button onclick="window.addPeduliRow('${s.id}')" class="text-[10px] uppercase tracking-wider font-extrabold text-teal-600 bg-teal-50 hover:bg-teal-100 py-2 px-3 rounded-lg transition-colors border border-teal-200">
+                            <i class="fa-solid fa-plus mr-1"></i> Tambah Temuan
+                        </button>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        window.savePeduliData = function() {
+            const date = document.getElementById('peduli-date').value;
+            const targetStudents = window.getFilteredStudents('peduli');
+            if (!date || targetStudents.length === 0) return;
+
+            let catData = {};
+            targetStudents.forEach(s => {
+                const container = document.getElementById(`peduli_container_${s.id}`);
+                const items = container.querySelectorAll('.peduli-item');
+                let sData = [];
+                
+                items.forEach(item => {
+                    const loc = item.querySelector('.peduli-loc').value;
+                    const note = item.querySelector('.peduli-note').value;
+                    if (loc !== '-' || note.trim() !== '') {
+                        sData.push({ loc, note });
+                    }
+                });
+                
+                // Kalau bersih (tidak ada isi sama sekali), kita simpan state aman
+                if (sData.length === 0) sData.push({loc: '-', note: ''});
+                catData[s.id] = sData;
+            });
+            
+            set(ref(database, `mutabaah_kebersihan/${date}/peduli`), catData)
+                .then(() => window.showToast(`Catatan Peduli Lingkungan tersimpan!`));
+        }
+
+        // --- TAB: LAPORAN ---
+        window.getBadge = function(code) {
+            if(code === 'B') return '<span class="text-emerald-600 font-bold">Bersih</span>';
+            if(code === 'K') return '<span class="text-amber-600 font-bold">Kotor</span>';
+            if(code === 'T') return '<span class="text-red-600 font-bold">Tdk Dikerjakan</span>';
+            return '-';
+        }
+
+        window.renderReportTable = function() {
+            const dateStr = document.getElementById('report-date').value; 
+            const cat = document.getElementById('kategori-report').value;
+            const container = document.getElementById('report-container');
+
+            if(!dateStr) return;
+
+            const targetStudents = window.getFilteredStudents(cat);
+            
+            let html = `<div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm text-left text-gray-700">
+                <thead class="text-[10px] text-gray-500 uppercase bg-gray-50 border-b border-gray-200 font-extrabold tracking-wider">
+                    <tr>
+                        <th class="px-4 py-3 min-w-[120px] max-w-[140px] md:max-w-[220px] whitespace-normal break-words sticky-col bg-gray-50 leading-snug">Nama Entitas</th>
+                        <th class="px-3 py-3 text-center border-l bg-emerald-50/50 text-emerald-800 min-w-[100px]">${cat === 'peduli' ? 'Status' : 'Skor Bersih'}</th>
+                        <th class="px-4 py-3 text-left border-l min-w-[250px]">Log Area Kotor / Pelanggaran</th>
+                    </tr>
+                </thead><tbody>`;
+
+            if(targetStudents.length === 0) {
+                 html += `<tr><td colspan="3" class="text-center py-8 text-gray-500 italic">Tidak ada entitas untuk kategori ini.</td></tr>`;
+            } else {
+                targetStudents.forEach((s, idx) => {
+                    let log = [];
+                    const dayData = window.db[dateStr] && window.db[dateStr][cat] ? window.db[dateStr][cat] : null;
+
+                    // Laporan Peduli Lingkungan (Individu) MULTIPLE ARRAY
+                    if (cat === 'peduli') {
+                        if (dayData && dayData[s.id]) {
+                            let peduliList = Array.isArray(dayData[s.id]) ? dayData[s.id] : [dayData[s.id]];
+                            peduliList.forEach(p => {
+                                if (p && (p.loc !== '-' || (p.note && p.note.trim() !== ''))) {
+                                    const showLoc = p.loc !== '-' ? p.loc : 'Area Umum';
+                                    const showNote = p.note ? p.note : 'Tidak ada catatan detail';
+                                    log.push(`<div class="mb-1"><span class="font-bold text-[10px] text-teal-800"><i class="fa-solid fa-triangle-exclamation text-teal-500 mr-1"></i> ${showLoc}:</span> <span class="text-gray-600 font-medium italic">"${showNote}"</span></div>`);
+                                }
+                            });
+                        }
+                        
+                        const bgRow = idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50';
+                        const isAman = log.length === 0;
+                        
+                        html += `<tr class="border-b border-gray-100 ${bgRow} hover:bg-teal-50/50">
+                            <td class="px-4 py-4 font-bold text-gray-800 sticky-col ${bgRow} min-w-[120px] max-w-[140px] md:max-w-[220px] whitespace-normal break-words text-xs md:text-sm leading-relaxed">${s.name}</td>
+                            <td class="px-3 py-4 text-center border-l font-extrabold text-sm ${isAman ? 'text-teal-600 bg-teal-50' : 'text-amber-600 bg-amber-50'}">${isAman ? 'Aman' : 'Ada Temuan'}</td>
+                            <td class="px-4 py-3 border-l text-[11px]">${log.length > 0 ? `<div class="max-h-[100px] overflow-y-auto pr-2">${log.join('')}</div>` : '<span class="text-teal-600 font-bold italic"><i class="fa-solid fa-check mr-1"></i> Tidak Ada Temuan</span>'}</td>
+                        </tr>`;
+
+                    } 
+                    // Laporan Piket Biasa (Harian, Kelas, Kamar)
+                    else {
+                        const cols = window.kategoriPiket[cat];
+                        let totalTugas = 0;
+                        let totalBersih = 0;
+
+                        if(dayData && dayData[s.id]) {
+                            const vals = dayData[s.id];
+                            vals.forEach((v, i) => {
+                                if(v !== '-') totalTugas++;
+                                if(v === 'B') totalBersih++;
+                                if(v === 'K' || v === 'T') {
+                                    log.push(`<div class="mb-1"><span class="font-bold text-[10px] text-gray-800"><i class="fa-solid fa-circle-exclamation text-red-400 mr-1"></i></span> ${cols[i]}: ${window.getBadge(v)}</div>`);
+                                }
+                            });
+                        }
+
+                        const pct = totalTugas === 0 ? 0 : Math.round((totalBersih / totalTugas) * 100);
+                        const colorClass = pct < 70 ? 'text-red-600 bg-red-50' : 'text-emerald-700 bg-emerald-50';
+                        const bgRow = idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50';
+                        
+                        html += `<tr class="border-b border-gray-100 ${bgRow} hover:bg-emerald-50/50">
+                            <td class="px-4 py-4 sticky-col ${bgRow} min-w-[120px] max-w-[140px] md:max-w-[220px] whitespace-normal break-words text-xs md:text-sm leading-relaxed">${window.renderHighlightedName(s.name)}</td>
+                            <td class="px-3 py-4 text-center border-l font-extrabold text-lg ${colorClass}">${totalTugas > 0 ? pct+'%' : '-'}</td>
+                            <td class="px-4 py-3 border-l text-[11px]">${log.length > 0 ? `<div class="max-h-[100px] overflow-y-auto pr-2">${log.join('')}</div>` : (totalTugas > 0 ? '<span class="text-emerald-600 font-bold italic"><i class="fa-solid fa-check mr-1"></i> Bersih Semua</span>' : '<span class="text-gray-400 italic">Belum Ada Data Input</span>')}</td>
+                        </tr>`;
+                    }
+                });
+            }
+
+            html += `</tbody></table></div></div>`;
+            container.innerHTML = html;
+        }
+
+        // --- TAB: TINDAK LANJUT ---
+        window.savePunishment = function(id, field, value) {
+            if (!window.dbPunishment[id]) window.dbPunishment[id] = {};
+            window.dbPunishment[id][field] = value;
+            set(ref(database, 'punishment_kebersihan/' + id), window.dbPunishment[id]);
+        }
+
+        window.renderPunishmentTable = function() {
+            const monthStr = document.getElementById('punishment-month').value; 
+            const container = document.getElementById('punishment-container');
+            if(!monthStr) return;
+
+            const monthDates = Object.keys(window.db).filter(d => d.startsWith(monthStr)).sort();
+            let allHtml = '';
+            let adaPelanggaran = false;
+
+            monthDates.forEach(date => {
+                let dayHtml = '';
+                let dHasViolation = false;
+
+                window.students.forEach((s, idx) => {
+                    let violations = [];
+                    
+                    // Cek piket harian, kamar, kelas
+                    Object.keys(window.kategoriPiket).forEach(cat => {
+                        if(window.db[date][cat] && window.db[date][cat][s.id]) {
+                            const vals = window.db[date][cat][s.id];
+                            vals.forEach((v, i) => {
+                                if(v === 'K' || v === 'T') {
+                                    violations.push(`<li><span class="font-bold text-gray-700">${window.kategoriPiket[cat][i]}:</span> ${window.getBadge(v)} <span class="text-[9px] text-gray-400 font-bold uppercase">(${cat})</span></li>`);
+                                }
+                            });
+                        }
+                    });
+
+                    // Cek log Peduli Lingkungan (Individu) MULTIPLE ARRAY
+                    if (window.db[date]['peduli'] && window.db[date]['peduli'][s.id]) {
+                        let peduliList = Array.isArray(window.db[date]['peduli'][s.id]) ? window.db[date]['peduli'][s.id] : [window.db[date]['peduli'][s.id]];
+                        peduliList.forEach(p => {
+                            if (p && (p.loc !== '-' || (p.note && p.note.trim() !== ''))) {
+                                const showLoc = p.loc !== '-' ? p.loc : 'Area Umum';
+                                const showNote = p.note ? p.note : 'Tidak ada catatan detail';
+                                violations.push(`<li><span class="font-bold text-teal-700">${showLoc}:</span> <span class="text-teal-600 font-medium italic">"${showNote}"</span> <span class="text-[9px] text-gray-400 font-bold uppercase">(INDIVIDU)</span></li>`);
+                            }
+                        });
+                    }
+
+                    if(violations.length > 0) {
+                        dHasViolation = true; adaPelanggaran = true;
+                        const pid = `${date}_${s.id}`;
+                        const pData = window.dbPunishment[pid] || { note: '', done: false };
+                        const bgClass = idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50';
+                        
+                        dayHtml += `
+                            <tr class="border-b border-red-100 ${bgClass} ${pData.done ? 'hukuman-done' : ''}">
+                                <td class="px-4 py-4 sticky-col bg-white min-w-[120px] max-w-[140px] md:max-w-[220px] whitespace-normal break-words text-xs md:text-sm leading-relaxed">${window.renderHighlightedName(s.name)}</td>
+                                <td class="px-5 py-4 border-l border-red-100 text-sm align-top"><ul class="list-none space-y-1.5">${violations.join('')}</ul></td>
+                                <td class="px-3 py-3 border-l border-red-100 align-top"><textarea placeholder="Tulis instruksi tindak lanjut..." onchange="window.savePunishment('${pid}', 'note', this.value)" class="bg-red-50/30 border border-red-200 text-gray-900 text-xs rounded-xl block w-full p-3 focus:ring-2 focus:ring-red-500 focus:bg-white min-h-[60px] resize-none outline-none">${pData.note || ''}</textarea></td>
+                                <td class="px-4 py-4 text-center border-l border-red-100 align-middle print:hidden"><label class="cursor-pointer flex flex-col items-center justify-center gap-1"><input type="checkbox" ${pData.done ? 'checked' : ''} onchange="window.savePunishment('${pid}', 'done', this.checked)" class="w-6 h-6 text-emerald-500 bg-gray-100 border-gray-300 rounded-lg focus:ring-emerald-500 focus:ring-2 cursor-pointer"><span class="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">Selesai</span></label></td>
+                            </tr>
+                        `;
+                    }
+                });
+
+                if (dHasViolation) {
+                    allHtml += `<div class="mb-8"><h3 class="text-base font-extrabold text-red-800 mb-3 border-l-4 border-red-500 pl-3"><i class="fa-regular fa-calendar text-red-500 mr-1"></i> Tanggal: ${date}</h3><div class="bg-white rounded-2xl shadow-sm border border-red-200 overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm text-left text-gray-700"><thead class="bg-red-50 text-[11px] uppercase text-red-800 font-extrabold tracking-wider border-b border-red-200"><tr><th class="px-4 py-3 min-w-[120px] max-w-[140px] md:max-w-[220px] whitespace-normal break-words sticky-col bg-red-50 leading-snug">Nama Entitas</th><th class="px-5 py-3 border-l border-red-200 min-w-[200px]">Area Kotor / Pelanggaran</th><th class="px-4 py-3 border-l border-red-200 min-w-[220px]">Tindak Lanjut</th><th class="px-4 py-3 text-center border-l border-red-200 print:hidden w-[100px]">Aksi</th></tr></thead><tbody>${dayHtml}</tbody></table></div></div></div>`;
+                }
+            });
+
+            container.innerHTML = adaPelanggaran ? allHtml : `<div class="bg-white p-10 rounded-3xl shadow-sm border border-emerald-100 text-center"><div class="bg-emerald-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-100"><i class="fa-solid fa-face-smile-beam text-4xl text-emerald-500"></i></div><p class="font-extrabold text-xl text-emerald-800 mb-1">Alhamdulillah Bersih!</p><p class="text-sm font-medium opacity-80 text-emerald-700">Tidak ada area yang kotor di bulan ini.</p></div>`;
+        }
+
+        // --- GLOBAL EXECUTOR ---
+        window.onload = function() {
+            if(sessionStorage.getItem('isLoggedIn') === 'true') {
+                document.getElementById('login-overlay').classList.add('hidden');
+                document.getElementById('main-app').classList.remove('hidden');
+                
+                const today = new Date().toISOString().split('T')[0];
+                document.getElementById('input-date').value = today;
+                document.getElementById('peduli-date').value = today;
+                document.getElementById('report-date').value = today; 
+                document.getElementById('punishment-month').value = today.substring(0,7);
+                window.renderInputTable();
+            }
+
+            document.getElementById('pin-input').addEventListener("keypress", function(e) {
+                if (e.key === "Enter") { e.preventDefault(); window.checkLogin(); }
+            });
+        };
+    </script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('Service Worker Kebersihan Aktif!'))
+                    .catch(err => console.log('Gagal daftar SW:', err));
+            });
+        }
+    </script>
+</body>
+</html>

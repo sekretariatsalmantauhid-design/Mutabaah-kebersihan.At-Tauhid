@@ -1,0 +1,16 @@
+{
+  "name": "Mutaba'ah Santri Pro",
+  "short_name": "Mutabaah",
+  "start_url": "/Mutabaah-kebersihan.At-Tauhid/",
+   "scope": "/Mutabaah-kebersihan.At-Tauhid/",
+  "display": "standalone",
+  "background_color": "#047857",
+  "theme_color": "#047857",
+  "icons": [
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
