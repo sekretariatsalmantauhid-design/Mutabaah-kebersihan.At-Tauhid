@@ -208,6 +208,13 @@
                         </div>
                     </div>
                     <div class="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                        <select id="punishment-week" class="bg-red-50 border-2 border-red-200 text-red-800 rounded-xl p-3 shadow-inner font-bold text-sm outline-none cursor-pointer" onchange="window.renderPunishmentTable()">
+                            <option value="all">Satu Bulan Penuh</option>
+                            <option value="w1">Pekan 1 (Tgl 1 - 7)</option>
+                            <option value="w2">Pekan 2 (Tgl 8 - 14)</option>
+                            <option value="w3">Pekan 3 (Tgl 15 - 21)</option>
+                            <option value="w4">Pekan 4 (Tgl 22 - Akhir Bulan)</option>
+                        </select>
                         <input type="month" id="punishment-month" class="bg-gray-50 border border-gray-200 rounded-xl p-3 shadow-inner font-bold text-sm outline-none cursor-pointer" onchange="window.renderPunishmentTable()">
                         <button onclick="window.print()" class="bg-red-600 hover:bg-red-700 text-white py-3 px-6 rounded-xl shadow-md text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-95">
                             <i class="fa-solid fa-file-pdf"></i> Export
@@ -218,16 +225,16 @@
             </section>
 
             <section id="section-students" class="hidden animate-fade-in print:hidden">
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-6 flex items-center gap-4">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-6 flex flex-col md:flex-row items-start md:items-center gap-4">
                     <div class="bg-gray-100 text-gray-600 p-3 rounded-xl"><i class="fa-solid fa-users-viewfinder text-xl"></i></div>
                     <div>
                         <h2 class="text-xl font-extrabold text-gray-800">Master Data Entitas</h2>
-                        <p class="text-sm text-gray-500 font-medium">Masukkan nama dengan kata kunci "Kelompok", "Kelas", atau "Kamar" agar otomatis tersortir.</p>
+                        <p class="text-sm text-gray-500 font-medium">Sistem pintar: Hapus permanen jika salah input, Arsipkan jika entitas berubah/lulus.</p>
                     </div>
                 </div>
 
                 <div class="bg-gradient-to-r from-emerald-50 to-teal-50 p-6 rounded-2xl shadow-inner border border-emerald-100 mb-6">
-                    <h3 class="text-sm font-bold text-emerald-800 mb-3">Tambah Entitas Baru</h3>
+                    <h3 class="text-sm font-bold text-emerald-800 mb-3">Tambah Entitas Baru <span class="text-xs font-normal opacity-80">(Tgl masuk tercatat otomatis)</span></h3>
                     <div class="flex flex-col sm:flex-row gap-3">
                         <input type="text" id="new-student-name" placeholder="Contoh: Kelompok 1 : Ahmad / Kelas 7A : Ali / Kamar Abu Bakar..." class="bg-white border-2 border-emerald-100 text-gray-900 rounded-xl focus:ring-0 focus:border-emerald-500 block w-full p-3 font-medium outline-none transition-colors shadow-sm">
                         <button onclick="window.addStudent()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-8 rounded-xl shadow-md transition-colors whitespace-nowrap active:scale-95">
@@ -242,7 +249,7 @@
                             <tr>
                                 <th class="px-6 py-4 w-16 text-center">No</th>
                                 <th class="px-6 py-4 w-full">Nama Entitas (Kamar / Kelas / Kelompok / Individu)</th>
-                                <th class="px-6 py-4 text-center min-w-[120px]">Aksi</th>
+                                <th class="px-6 py-4 text-center min-w-[140px]">Aksi</th>
                             </tr>
                         </thead>
                         <tbody id="students-tbody"></tbody>
@@ -283,9 +290,26 @@
         window.dbPunishment = {};
         window.currentTab = 'input';
 
+        // --- SISTEM TANGGAL GAIB & ARSIP (SOFT DELETE) ---
+        window.isActiveOnDate = function(s, dateStr) {
+            if (!dateStr) return true;
+            // Jika tanggal pencarian LEBIH DULU dari tanggal masuk, sembunyikan
+            const createdAt = s.createdAt || '2000-01-01'; 
+            if (dateStr < createdAt) return false;
+            
+            // Jika status arsip TAPI tanggal pencarian LEBIH BARU/SAMA dengan tgl arsip, sembunyikan
+            if (s.archived && s.archivedAt && dateStr >= s.archivedAt) return false;
+            
+            return true;
+        }
+
         // --- FILTER ENTITAS CERDAS ---
-        window.getFilteredStudents = function(cat) {
+        window.getFilteredStudents = function(cat, targetDate) {
             return window.students.filter(s => {
+                // 1. Cek Aktif di Tanggal Tersebut
+                if(!window.isActiveOnDate(s, targetDate)) return false;
+
+                // 2. Cek Kategori (Keyword)
                 const n = s.name.toLowerCase();
                 const isKamar = n.includes('kamar');
                 const isKelas = n.includes('kelas');
@@ -412,27 +436,36 @@
             if (window.students.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="3" class="text-center py-8 text-gray-500 italic">Belum ada data Entitas.</td></tr>`; return;
             }
-            tbody.innerHTML = window.students.map((s, idx) => `
-                <tr class="border-b bg-white hover:bg-gray-50 transition-colors">
+            tbody.innerHTML = window.students.map((s, idx) => {
+                const isArchived = s.archived ? 'opacity-50 grayscale bg-gray-50' : 'bg-white hover:bg-gray-50';
+                const badge = s.archived ? `<span class="ml-2 text-[9px] bg-gray-300 text-gray-600 px-2 py-0.5 rounded uppercase font-bold tracking-wider align-middle"><i class="fa-solid fa-box-archive mr-1"></i>Diarsipkan</span>` : '';
+                
+                let buttons = '';
+                if (!s.archived) {
+                    buttons += `<button onclick="window.editStudent('${s.id}', '${s.name}')" class="text-blue-500 hover:bg-blue-50 w-8 h-8 rounded-lg transition-all" title="Edit Data"><i class="fa-solid fa-pen"></i></button>`;
+                    buttons += `<button onclick="window.archiveStudent('${s.id}')" class="text-amber-500 hover:bg-amber-50 w-8 h-8 rounded-lg transition-all" title="Arsipkan (Hilangkan dari Absen)"><i class="fa-solid fa-box-archive"></i></button>`;
+                }
+                buttons += `<button onclick="window.deleteStudent('${s.id}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 w-8 h-8 rounded-lg transition-all" title="Hapus Permanen (Jika Salah Ketik)"><i class="fa-solid fa-trash"></i></button>`;
+
+                return `<tr class="border-b transition-colors ${isArchived}">
                     <td class="px-6 py-4 font-mono text-gray-400 font-medium text-center">${idx + 1}</td>
-                    <td class="px-6 py-4">${window.renderHighlightedName(s.name)}</td>
-                    <td class="px-6 py-4 text-center flex justify-center gap-2">
-                        <button onclick="window.editStudent('${s.id}', '${s.name}')" class="text-blue-500 hover:bg-blue-50 w-10 h-10 rounded-xl transition-all">
-                            <i class="fa-solid fa-pen"></i>
-                        </button>
-                        <button onclick="window.deleteStudent('${s.id}')" class="text-red-500 hover:bg-red-50 w-10 h-10 rounded-xl transition-all">
-                            <i class="fa-solid fa-trash"></i>
-                        </button>
+                    <td class="px-6 py-4">
+                        ${window.renderHighlightedName(s.name)} ${badge}
+                        ${s.createdAt ? `<div class="text-[10px] text-gray-400 mt-1.5 font-medium"><i class="fa-solid fa-calendar-plus mr-1"></i>Tgl Masuk/Dibuat: ${s.createdAt}</div>` : ''}
                     </td>
-                </tr>
-            `).join('');
+                    <td class="px-6 py-4 text-center flex justify-center gap-1">
+                        ${buttons}
+                    </td>
+                </tr>`;
+            }).join('');
         }
 
         window.addStudent = function() {
             const input = document.getElementById('new-student-name');
             const name = input.value.trim();
             if (!name) return;
-            const newArray = [...window.students, { id: 'E' + Date.now(), name: name }];
+            const today = new Date().toISOString().split('T')[0];
+            const newArray = [...window.students, { id: 'E' + Date.now(), name: name, createdAt: today, archived: false }];
             set(ref(database, 'entities'), newArray).then(() => { input.value = ''; window.showToast('Entitas ditambahkan!'); });
         }
 
@@ -444,10 +477,18 @@
             }
         }
 
+        window.archiveStudent = function(id) {
+            if(confirm('Arsipkan entitas ini?\n\n(Akan disembunyikan dari pengisian absen kedepannya, tapi data yang lama tetap aman di dalam Laporan dan Tindak Lanjut).')) {
+                const today = new Date().toISOString().split('T')[0];
+                const updatedArray = window.students.map(s => s.id === id ? { ...s, archived: true, archivedAt: today } : s);
+                set(ref(database, 'entities'), updatedArray).then(() => window.showToast('Entitas berhasil diarsipkan!'));
+            }
+        }
+
         window.deleteStudent = function(id) {
-            if(confirm('Yakin hapus data ini?')) {
+            if(confirm('PERINGATAN!\nYakin HAPUS PERMANEN? Gunakan tombol ini HANYA JIKA Anda salah ketik saat input awal. Jika dihapus permanen, semua data laporan entitas ini bisa rusak/hilang.')) {
                 const filteredArray = window.students.filter(s => s.id !== id);
-                set(ref(database, 'entities'), filteredArray).then(() => window.showToast('Berhasil dihapus.'));
+                set(ref(database, 'entities'), filteredArray).then(() => window.showToast('Dihapus permanen dari Database.'));
             }
         }
 
@@ -476,7 +517,7 @@
                 ${cols.map(c => `<th class="px-3 py-4 text-center border-l border-gray-200 min-w-[120px] md:min-w-[140px]">${c}</th>`).join('')}
             </tr>`;
 
-            const targetStudents = window.getFilteredStudents(cat);
+            const targetStudents = window.getFilteredStudents(cat, date);
 
             if(targetStudents.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="${cols.length + 1}" class="text-center py-10 text-gray-500 italic font-medium">Tidak ada Entitas dengan kata kunci yang sesuai untuk kategori ini.</td></tr>`; return;
@@ -504,7 +545,7 @@
             const date = document.getElementById('input-date').value;
             const cat = document.getElementById('kategori-input').value;
             const cols = window.kategoriPiket[cat];
-            const targetStudents = window.getFilteredStudents(cat);
+            const targetStudents = window.getFilteredStudents(cat, date);
 
             if (!date || targetStudents.length === 0) return;
 
@@ -551,10 +592,10 @@
             const tbody = document.getElementById('peduli-tbody');
             if(!date) return;
             
-            const targetStudents = window.getFilteredStudents('peduli');
+            const targetStudents = window.getFilteredStudents('peduli', date);
             
             if(targetStudents.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="2" class="text-center py-10 text-gray-500 italic font-medium">Belum ada data Individu. Masukkan nama tanpa kata 'Kamar', 'Kelas', atau 'Kelompok' di Master Data.</td></tr>`; 
+                tbody.innerHTML = `<tr><td colspan="2" class="text-center py-10 text-gray-500 italic font-medium">Belum ada data Individu aktif di tanggal ini.</td></tr>`; 
                 return;
             }
 
@@ -563,16 +604,15 @@
             tbody.innerHTML = targetStudents.map((s, idx) => {
                 const bg = idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50';
                 
-                // Ambil data saved, paksa jadi Array supaya bisa menampung banyak pelanggaran
                 let savedData = dayData[s.id];
                 if (!savedData) savedData = [];
-                if (!Array.isArray(savedData)) savedData = [savedData]; // Backward compability kalau data lama berupa object tunggal
-                if (savedData.length === 0) savedData = [{loc: '-', note: ''}]; // Default 1 baris kosong
+                if (!Array.isArray(savedData)) savedData = [savedData]; 
+                if (savedData.length === 0) savedData = [{loc: '-', note: ''}]; 
                 
                 let itemsHtml = savedData.map(d => window.getPeduliRowHTML(d.loc, d.note)).join('');
 
                 return `<tr class="border-b ${bg} hover:bg-teal-50 transition-colors">
-                    <td class="px-4 py-4 font-bold text-gray-800 sticky-col ${bg} min-w-[120px] max-w-[140px] md:max-w-[220px] whitespace-normal break-words text-xs md:text-sm leading-relaxed align-top">${s.name}</td>
+                    <td class="px-4 py-4 font-bold text-gray-800 sticky-col ${bg} min-w-[120px] max-w-[140px] md:max-w-[220px] whitespace-normal break-words text-xs md:text-sm leading-relaxed align-top">${window.renderHighlightedName(s.name)}</td>
                     <td class="px-3 py-3 border-l border-gray-100 align-top">
                         <div id="peduli_container_${s.id}" class="space-y-2 mb-2 w-full">
                             ${itemsHtml}
@@ -587,7 +627,7 @@
 
         window.savePeduliData = function() {
             const date = document.getElementById('peduli-date').value;
-            const targetStudents = window.getFilteredStudents('peduli');
+            const targetStudents = window.getFilteredStudents('peduli', date);
             if (!date || targetStudents.length === 0) return;
 
             let catData = {};
@@ -604,7 +644,6 @@
                     }
                 });
                 
-                // Kalau bersih (tidak ada isi sama sekali), kita simpan state aman
                 if (sData.length === 0) sData.push({loc: '-', note: ''});
                 catData[s.id] = sData;
             });
@@ -628,7 +667,7 @@
 
             if(!dateStr) return;
 
-            const targetStudents = window.getFilteredStudents(cat);
+            const targetStudents = window.getFilteredStudents(cat, dateStr);
             
             let html = `<div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-sm text-left text-gray-700">
                 <thead class="text-[10px] text-gray-500 uppercase bg-gray-50 border-b border-gray-200 font-extrabold tracking-wider">
@@ -640,13 +679,12 @@
                 </thead><tbody>`;
 
             if(targetStudents.length === 0) {
-                 html += `<tr><td colspan="3" class="text-center py-8 text-gray-500 italic">Tidak ada entitas untuk kategori ini.</td></tr>`;
+                 html += `<tr><td colspan="3" class="text-center py-8 text-gray-500 italic">Tidak ada entitas aktif untuk kategori & tanggal ini.</td></tr>`;
             } else {
                 targetStudents.forEach((s, idx) => {
                     let log = [];
                     const dayData = window.db[dateStr] && window.db[dateStr][cat] ? window.db[dateStr][cat] : null;
 
-                    // Laporan Peduli Lingkungan (Individu) MULTIPLE ARRAY
                     if (cat === 'peduli') {
                         if (dayData && dayData[s.id]) {
                             let peduliList = Array.isArray(dayData[s.id]) ? dayData[s.id] : [dayData[s.id]];
@@ -663,14 +701,12 @@
                         const isAman = log.length === 0;
                         
                         html += `<tr class="border-b border-gray-100 ${bgRow} hover:bg-teal-50/50">
-                            <td class="px-4 py-4 font-bold text-gray-800 sticky-col ${bgRow} min-w-[120px] max-w-[140px] md:max-w-[220px] whitespace-normal break-words text-xs md:text-sm leading-relaxed">${s.name}</td>
+                            <td class="px-4 py-4 font-bold text-gray-800 sticky-col ${bgRow} min-w-[120px] max-w-[140px] md:max-w-[220px] whitespace-normal break-words text-xs md:text-sm leading-relaxed">${window.renderHighlightedName(s.name)}</td>
                             <td class="px-3 py-4 text-center border-l font-extrabold text-sm ${isAman ? 'text-teal-600 bg-teal-50' : 'text-amber-600 bg-amber-50'}">${isAman ? 'Aman' : 'Ada Temuan'}</td>
                             <td class="px-4 py-3 border-l text-[11px]">${log.length > 0 ? `<div class="max-h-[100px] overflow-y-auto pr-2">${log.join('')}</div>` : '<span class="text-teal-600 font-bold italic"><i class="fa-solid fa-check mr-1"></i> Tidak Ada Temuan</span>'}</td>
                         </tr>`;
 
-                    } 
-                    // Laporan Piket Biasa (Harian, Kelas, Kamar)
-                    else {
+                    } else {
                         const cols = window.kategoriPiket[cat];
                         let totalTugas = 0;
                         let totalBersih = 0;
@@ -712,10 +748,24 @@
 
         window.renderPunishmentTable = function() {
             const monthStr = document.getElementById('punishment-month').value; 
+            const weekFilter = document.getElementById('punishment-week').value;
             const container = document.getElementById('punishment-container');
             if(!monthStr) return;
 
-            const monthDates = Object.keys(window.db).filter(d => d.startsWith(monthStr)).sort();
+            let monthDates = Object.keys(window.db).filter(d => d.startsWith(monthStr)).sort();
+            
+            // Terapkan Filter Pekan
+            if (weekFilter !== 'all') {
+                monthDates = monthDates.filter(date => {
+                    const day = parseInt(date.split('-')[2]);
+                    if (weekFilter === 'w1' && day >= 1 && day <= 7) return true;
+                    if (weekFilter === 'w2' && day >= 8 && day <= 14) return true;
+                    if (weekFilter === 'w3' && day >= 15 && day <= 21) return true;
+                    if (weekFilter === 'w4' && day >= 22 && day <= 31) return true;
+                    return false;
+                });
+            }
+
             let allHtml = '';
             let adaPelanggaran = false;
 
@@ -724,6 +774,9 @@
                 let dHasViolation = false;
 
                 window.students.forEach((s, idx) => {
+                    // Pastikan anak tersebut terdaftar SAAT TANGGAL ITU
+                    if(!window.isActiveOnDate(s, date)) return;
+
                     let violations = [];
                     
                     // Cek piket harian, kamar, kelas
@@ -738,7 +791,7 @@
                         }
                     });
 
-                    // Cek log Peduli Lingkungan (Individu) MULTIPLE ARRAY
+                    // Cek log Peduli Lingkungan
                     if (window.db[date]['peduli'] && window.db[date]['peduli'][s.id]) {
                         let peduliList = Array.isArray(window.db[date]['peduli'][s.id]) ? window.db[date]['peduli'][s.id] : [window.db[date]['peduli'][s.id]];
                         peduliList.forEach(p => {
@@ -772,7 +825,7 @@
                 }
             });
 
-            container.innerHTML = adaPelanggaran ? allHtml : `<div class="bg-white p-10 rounded-3xl shadow-sm border border-emerald-100 text-center"><div class="bg-emerald-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-100"><i class="fa-solid fa-face-smile-beam text-4xl text-emerald-500"></i></div><p class="font-extrabold text-xl text-emerald-800 mb-1">Alhamdulillah Bersih!</p><p class="text-sm font-medium opacity-80 text-emerald-700">Tidak ada area yang kotor di bulan ini.</p></div>`;
+            container.innerHTML = adaPelanggaran ? allHtml : `<div class="bg-white p-10 rounded-3xl shadow-sm border border-emerald-100 text-center"><div class="bg-emerald-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-100"><i class="fa-solid fa-face-smile-beam text-4xl text-emerald-500"></i></div><p class="font-extrabold text-xl text-emerald-800 mb-1">Alhamdulillah Bersih!</p><p class="text-sm font-medium opacity-80 text-emerald-700">Tidak ada area yang kotor di rentang waktu ini.</p></div>`;
         }
 
         // --- GLOBAL EXECUTOR ---
